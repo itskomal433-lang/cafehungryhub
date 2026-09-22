@@ -1,0 +1,37 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="hh-gold-linear" x1="15" y1="10" x2="85" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFF4D0" />
+      <stop offset="25%" stop-color="#E6C26D" />
+      <stop offset="50%" stop-color="#DFAC42" />
+      <stop offset="75%" stop-color="#BF8823" />
+      <stop offset="100%" stop-color="#8C5B0D" />
+    </linearGradient>
+    <radialGradient id="hh-shield-bg" cx="45%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#1C402E" />
+      <stop offset="60%" stop-color="#11291E" />
+      <stop offset="100%" stop-color="#08140E" />
+    </radialGradient>
+  </defs>
+
+  <!-- Luxury Squircle Shield -->
+  <rect x="4" y="4" width="92" height="92" rx="26" fill="url(#hh-shield-bg)" stroke="url(#hh-gold-linear)" stroke-width="3" />
+
+  <!-- Inner Hairline -->
+  <rect x="10" y="10" width="80" height="80" rx="20" fill="none" stroke="url(#hh-gold-linear)" stroke-width="0.8" stroke-opacity="0.6" stroke-dasharray="3 2" />
+
+  <!-- Central Golden H Monogram -->
+  <path d="M 23 27 H 37 V 33 H 32 V 67 H 37 V 73 H 23 V 67 H 28 V 33 H 23 Z" fill="url(#hh-gold-linear)" />
+  <path d="M 63 27 H 77 V 33 H 72 V 67 H 77 V 73 H 63 V 67 H 68 V 33 H 63 Z" fill="url(#hh-gold-linear)" />
+  <path d="M 32 46 H 68 V 54 H 32 Z" fill="url(#hh-gold-linear)" />
+  <polygon points="50,44 55,50 50,56 45,50" fill="#FFF4D0" />
+
+  <!-- Botanical Leaves -->
+  <path d="M 15 50 C 13 42, 17 34, 21 30 C 20 37, 18 45, 15 50 Z" fill="url(#hh-gold-linear)" />
+  <path d="M 14 55 C 11 62, 14 70, 19 73 C 18 66, 16 59, 14 55 Z" fill="url(#hh-gold-linear)" />
+  <path d="M 85 50 C 87 42, 83 34, 79 30 C 80 37, 82 45, 85 50 Z" fill="url(#hh-gold-linear)" />
+  <path d="M 86 55 C 89 62, 86 70, 81 73 C 82 66, 84 59, 86 55 Z" fill="url(#hh-gold-linear)" />
+
+  <!-- Top Crown Star -->
+  <path d="M 50 12 Q 50 18, 54 18 Q 50 18, 50 24 Q 50 18, 46 18 Q 50 18, 50 12 Z" fill="#FFF4D0" />
+</svg>
