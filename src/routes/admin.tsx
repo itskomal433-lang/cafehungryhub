@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertCircle,
@@ -12,7 +12,11 @@ import {
   DollarSign,
   Edit3,
   ExternalLink,
+  Eye,
+  EyeOff,
   Flame,
+  History,
+  KeyRound,
   LayoutDashboard,
   Lock,
   LogOut,
@@ -24,6 +28,9 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Star,
@@ -31,6 +38,7 @@ import {
   Trash2,
   TrendingUp,
   Unlock,
+  UserCheck,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -97,6 +105,8 @@ function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [lockoutCountdown, setLockoutCountdown] = useState(store.lockoutRemaining);
 
   // Modals
   const [orderModalOpen, setOrderModalOpen] = useState(false);
@@ -153,25 +163,48 @@ function AdminPage() {
   );
   const [storeAddressLine, setStoreAddressLine] = useState(store.settings.address.line1);
 
-  // PIN change state
+  // PIN & Security change state
   const [oldPin, setOldPin] = useState("");
   const [newPin, setNewPin] = useState("");
+  const [confirmNewPin, setConfirmNewPin] = useState("");
+
+  // Lockout Countdown Timer
+  useEffect(() => {
+    if (store.lockoutRemaining > 0) {
+      setLockoutCountdown(store.lockoutRemaining);
+      const interval = setInterval(() => {
+        setLockoutCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setLockoutCountdown(0);
+    }
+  }, [store.lockoutRemaining]);
 
   const handleLogin = (pinToTest?: string) => {
-    const pin = pinToTest ?? pinInput;
-    if (store.login(pin)) {
+    const secret = (pinToTest ?? pinInput).trim();
+    if (!secret) {
+      toast.error("Please enter your admin passcode");
+      return;
+    }
+    const result = store.login(secret);
+    if (result.success) {
       setPinError(false);
       setPinInput("");
-      toast.success("Welcome back to Hungry Hub Admin!");
+      toast.success(result.message);
     } else {
       setPinError(true);
-      toast.error("Incorrect PIN. Default PIN is 1234.");
+      if (result.lockoutSeconds) {
+        setLockoutCountdown(result.lockoutSeconds);
+      }
+      toast.error(result.message);
     }
-  };
-
-  const handleQuickDemoLogin = () => {
-    store.login("1234");
-    toast.success("Logged in with default Demo PIN (1234)");
   };
 
   // Filtered Orders
@@ -383,76 +416,126 @@ function AdminPage() {
   };
 
   // -------------------------------------------------------------
-  // LOGIN SCREEN
+  // LOGIN SCREEN (SECURED)
   // -------------------------------------------------------------
   if (!store.isAuthenticated) {
+    const isLockedOut = lockoutCountdown > 0;
+
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-100 relative overflow-hidden">
         {/* Glow backdrop */}
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-600/15 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-3xl p-8 shadow-2xl relative z-10">
+        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-3xl p-7 sm:p-8 shadow-2xl relative z-10">
           <div className="text-center">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-950/90 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
               <LogoMark className="w-10 h-10" />
             </div>
-            <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-white">
-              Hungry Hub Admin
+            <h1 className="mt-4 font-display text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
+              Hungry Hub Admin <ShieldCheck className="w-5 h-5 text-emerald-400 inline" />
             </h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-xs text-slate-400">
               Kitchen POS & Restaurant Management Portal
             </p>
           </div>
 
-          <div className="mt-8 space-y-4">
+          {/* Rate Limit / Lockout Cooldown Banner */}
+          {isLockedOut ? (
+            <div className="mt-6 p-4 rounded-2xl bg-rose-950/60 border border-rose-800/60 text-rose-200 text-center animate-pulse">
+              <div className="flex items-center justify-center gap-2 font-bold text-sm text-rose-400">
+                <ShieldAlert className="w-5 h-5" /> Security Cooldown Active
+              </div>
+              <p className="mt-1.5 text-xs text-rose-300/90">
+                Too many failed attempts. Login temporarily disabled.
+              </p>
+              <div className="mt-3 text-2xl font-mono font-black text-rose-400 tracking-wider">
+                {lockoutCountdown}s
+              </div>
+              <p className="mt-1 text-[11px] text-rose-400/70">
+                Please wait before trying again.
+              </p>
+            </div>
+          ) : null}
+
+          <div className="mt-6 space-y-4">
             <div>
-              <Label className="text-xs uppercase tracking-wider text-slate-400">
-                Enter 4-Digit Owner / Staff PIN
-              </Label>
-              <div className="mt-2 flex gap-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                  Owner / Staff Passcode
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-xs text-slate-400 hover:text-emerald-400 flex items-center gap-1 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5" /> Hide
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5" /> Show
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="mt-2 relative">
                 <Input
-                  type="password"
-                  maxLength={6}
+                  type={showPassword ? "text" : "password"}
+                  maxLength={16}
+                  disabled={isLockedOut}
                   value={pinInput}
                   onChange={(e) => {
                     setPinInput(e.target.value);
                     setPinError(false);
                   }}
-                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                  placeholder="• • • •"
+                  onKeyDown={(e) => e.key === "Enter" && !isLockedOut && handleLogin()}
+                  placeholder={isLockedOut ? "Locked..." : "Enter Passcode"}
                   className={cn(
-                    "text-center text-2xl tracking-widest font-mono bg-slate-950/60 border-slate-700 h-14 text-white focus:ring-emerald-500",
+                    "text-center text-xl tracking-widest font-mono bg-slate-950/70 border-slate-700 h-13 text-white focus:ring-emerald-500 rounded-xl",
                     pinError && "border-rose-500 text-rose-400 focus:ring-rose-500",
+                    isLockedOut && "opacity-50 cursor-not-allowed bg-slate-950",
                   )}
-                  autoFocus
+                  autoFocus={!isLockedOut}
                 />
               </div>
-              {pinError && (
+
+              {pinError && !isLockedOut && (
                 <p className="mt-2 text-xs text-rose-400 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> Incorrect PIN. Try default: 1234
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Incorrect passcode. Please try again.
                 </p>
               )}
             </div>
 
             {/* Quick Keypad */}
-            <div className="grid grid-cols-3 gap-2 pt-2">
+            <div className="grid grid-cols-3 gap-2 pt-1">
               {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "OK"].map((btn) => (
                 <button
                   key={btn}
                   type="button"
+                  disabled={isLockedOut}
                   onClick={() => {
-                    if (btn === "C") setPinInput("");
-                    else if (btn === "OK") handleLogin();
-                    else setPinInput((prev) => (prev.length < 6 ? prev + btn : prev));
+                    if (isLockedOut) return;
+                    if (btn === "C") {
+                      setPinInput("");
+                      setPinError(false);
+                    } else if (btn === "OK") {
+                      handleLogin();
+                    } else {
+                      setPinInput((prev) => (prev.length < 16 ? prev + btn : prev));
+                    }
                   }}
                   className={cn(
-                    "h-12 rounded-xl text-lg font-bold font-mono transition-all active:scale-95",
+                    "h-11 rounded-xl text-base font-bold font-mono transition-all active:scale-95",
+                    isLockedOut && "opacity-40 cursor-not-allowed",
                     btn === "OK"
-                      ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                      ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950"
                       : btn === "C"
-                        ? "bg-rose-950/50 text-rose-300 hover:bg-rose-900/60 border border-rose-800/40"
-                        : "bg-slate-800/70 hover:bg-slate-700/80 text-slate-200 border border-slate-700/50",
+                        ? "bg-rose-950/40 text-rose-300 hover:bg-rose-900/50 border border-rose-800/40"
+                        : "bg-slate-800/60 hover:bg-slate-700/80 text-slate-200 border border-slate-700/50",
                   )}
                 >
                   {btn}
@@ -462,28 +545,37 @@ function AdminPage() {
 
             <Button
               onClick={() => handleLogin()}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 rounded-xl shadow-lg mt-2"
+              disabled={isLockedOut || !pinInput.trim()}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-12 rounded-xl shadow-lg shadow-emerald-950/50 mt-2 disabled:opacity-50"
             >
-              <Unlock className="w-4 h-4 mr-2" /> Unlock Dashboard
+              <Unlock className="w-4 h-4 mr-2" /> Unlock Admin Portal
             </Button>
 
-            <div className="pt-3 border-t border-slate-800/80 flex flex-col gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleQuickDemoLogin}
-                className="w-full bg-slate-800/40 hover:bg-slate-800 text-slate-300 border-slate-700 text-xs font-semibold rounded-xl"
-              >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-400" /> Quick Demo Login (Default
-                PIN: 1234)
-              </Button>
+            {/* Security Guarantee Badges */}
+            <div className="pt-4 border-t border-slate-800/80">
+              <div className="grid grid-cols-3 gap-1.5 text-[10px] text-slate-400 text-center">
+                <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800 flex flex-col items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>SHA-256 Hashed</span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800 flex flex-col items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Auto-Lock</span>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800 flex flex-col items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Rate Limited</span>
+                </div>
+              </div>
 
-              <Link
-                to="/"
-                className="text-xs text-center text-slate-500 hover:text-emerald-400 transition-colors mt-2"
-              >
-                ← Return to Public Customer Website
-              </Link>
+              <div className="text-center mt-3">
+                <Link
+                  to="/"
+                  className="text-xs text-slate-500 hover:text-emerald-400 transition-colors inline-block"
+                >
+                  ← Return to Public Customer Website
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -1536,81 +1628,342 @@ function AdminPage() {
         )}
 
         {/* ========================================================= */}
-        {/* TAB 7: SECURITY & PIN */}
+        {/* TAB 7: SECURITY & ACCESS CONTROL */}
         {/* ========================================================= */}
         {activeTab === "security" && (
-          <div className="max-w-md mx-auto space-y-6 animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
-              <h3 className="font-display font-bold text-lg text-white">
-                Admin Security & Owner Passcode
-              </h3>
-              <p className="text-xs text-slate-400">
-                Update your 4-digit master PIN for admin access.
-              </p>
-
-              <div>
-                <Label className="text-xs text-slate-400 uppercase">Current Master PIN</Label>
-                <Input
-                  type="password"
-                  maxLength={6}
-                  value={oldPin}
-                  onChange={(e) => setOldPin(e.target.value)}
-                  placeholder="Current PIN (e.g. 1234)"
-                  className="mt-1 bg-slate-950 border-slate-700 text-white font-mono text-center tracking-widest text-lg"
-                />
+          <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
+            {/* Header / Security Status Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-950 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                    Credential Storage
+                  </p>
+                  <p className="text-sm font-bold text-white mt-0.5">SHA-256 + Salt</p>
+                  <p className="text-[10px] text-emerald-400">Zero plaintext storage</p>
+                </div>
               </div>
 
-              <div>
-                <Label className="text-xs text-slate-400 uppercase">New Master PIN</Label>
-                <Input
-                  type="password"
-                  maxLength={6}
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  placeholder="New 4-digit PIN"
-                  className="mt-1 bg-slate-950 border-slate-700 text-white font-mono text-center tracking-widest text-lg"
-                />
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-950 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                    Rate Limiting
+                  </p>
+                  <p className="text-sm font-bold text-white mt-0.5">Anti-Brute Force</p>
+                  <p className="text-[10px] text-amber-400">5 attempts max · 60s cooldown</p>
+                </div>
               </div>
 
-              <Button
-                onClick={() => {
-                  if (oldPin !== store.adminPin) {
-                    toast.error("Current PIN does not match");
-                    return;
-                  }
-                  if (newPin.length < 4) {
-                    toast.error("New PIN must be at least 4 digits");
-                    return;
-                  }
-                  store.changePin(newPin);
-                  setOldPin("");
-                  setNewPin("");
-                  toast.success("Owner PIN updated successfully!");
-                }}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-11 rounded-xl"
-              >
-                Change Admin PIN
-              </Button>
+              <div className="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-950 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+                    Inactivity Auto-Lock
+                  </p>
+                  <p className="text-sm font-bold text-white mt-0.5">
+                    {store.securityMeta?.autoLockMinutes
+                      ? `${store.securityMeta.autoLockMinutes} Minutes`
+                      : "Disabled"}
+                  </p>
+                  <p className="text-[10px] text-blue-400">Session auto-expires</p>
+                </div>
+              </div>
             </div>
 
-            {/* Data Management & Wipe Panel */}
-            <div className="bg-slate-900 border border-rose-950/60 p-6 rounded-3xl space-y-4">
-              <div className="flex items-center gap-2 text-rose-400">
-                <Trash2 className="w-5 h-5" />
-                <h4 className="font-display font-bold text-base text-white">
-                  Data Management & Reset
-                </h4>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Clear all live orders, test bills, and local storage data to start with a fresh
-                clean state.
-              </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 1: Change Master Passcode */}
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-950 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <KeyRound className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-base text-white">
+                      Change Admin Passcode
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Update master credential for owner / manager login
+                    </p>
+                  </div>
+                </div>
 
-              <div className="pt-2 space-y-2">
+                <div className="space-y-3 pt-2">
+                  <div>
+                    <Label className="text-xs text-slate-400 uppercase font-semibold">
+                      Current Passcode
+                    </Label>
+                    <Input
+                      type="password"
+                      maxLength={32}
+                      value={oldPin}
+                      onChange={(e) => setOldPin(e.target.value)}
+                      placeholder="Enter existing passcode"
+                      className="mt-1 bg-slate-950 border-slate-700 text-white font-mono text-center tracking-widest text-base rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-slate-400 uppercase font-semibold">
+                      New Passcode (min 4 characters)
+                    </Label>
+                    <Input
+                      type="password"
+                      maxLength={32}
+                      value={newPin}
+                      onChange={(e) => setNewPin(e.target.value)}
+                      placeholder="Enter new passcode"
+                      className="mt-1 bg-slate-950 border-slate-700 text-white font-mono text-center tracking-widest text-base rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs text-slate-400 uppercase font-semibold">
+                      Confirm New Passcode
+                    </Label>
+                    <Input
+                      type="password"
+                      maxLength={32}
+                      value={confirmNewPin}
+                      onChange={(e) => setConfirmNewPin(e.target.value)}
+                      placeholder="Re-enter new passcode"
+                      className="mt-1 bg-slate-950 border-slate-700 text-white font-mono text-center tracking-widest text-base rounded-xl"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      if (!oldPin.trim()) {
+                        toast.error("Please enter your current passcode");
+                        return;
+                      }
+                      if (newPin.length < 4) {
+                        toast.error("New passcode must be at least 4 characters");
+                        return;
+                      }
+                      if (newPin !== confirmNewPin) {
+                        toast.error("New passcodes do not match. Please verify.");
+                        return;
+                      }
+
+                      const res = store.changePassword(oldPin, newPin);
+                      if (res.success) {
+                        setOldPin("");
+                        setNewPin("");
+                        setConfirmNewPin("");
+                        toast.success(res.message);
+                      } else {
+                        toast.error(res.message);
+                      }
+                    }}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-11 rounded-xl shadow-md mt-2"
+                  >
+                    <Lock className="w-4 h-4 mr-2" /> Update Passcode
+                  </Button>
+                </div>
+              </div>
+
+              {/* Card 2: Session & Auto-Lock Settings */}
+              <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-blue-950 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-base text-white">
+                        Session & Inactivity Auto-Lock
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Automatically locks console if left unattended
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4">
+                    <div>
+                      <Label className="text-xs text-slate-400 uppercase font-semibold">
+                        Inactivity Lock Timeout
+                      </Label>
+                      <Select
+                        value={String(store.securityMeta?.autoLockMinutes ?? 15)}
+                        onValueChange={(val) => {
+                          const mins = parseInt(val, 10);
+                          store.setAutoLockTimeout(mins);
+                          toast.success(
+                            mins === 0
+                              ? "Inactivity auto-lock disabled"
+                              : `Auto-lock timeout set to ${mins} minutes`,
+                          );
+                        }}
+                      >
+                        <SelectTrigger className="mt-1 bg-slate-950 border-slate-700 text-white rounded-xl">
+                          <SelectValue placeholder="Select Timeout" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                          <SelectItem value="5">5 Minutes (High Security)</SelectItem>
+                          <SelectItem value="15">15 Minutes (Recommended)</SelectItem>
+                          <SelectItem value="30">30 Minutes</SelectItem>
+                          <SelectItem value="60">60 Minutes</SelectItem>
+                          <SelectItem value="0">Disabled (Stay Unlocked)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 text-xs space-y-1.5 text-slate-400">
+                      <div className="flex justify-between">
+                        <span>Current Session:</span>
+                        <span className="font-mono text-slate-300">
+                          {store.authSession ? store.authSession.token.slice(0, 18) + "..." : "Active"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Session Created:</span>
+                        <span className="text-slate-300">
+                          {store.authSession
+                            ? new Date(store.authSession.createdAt).toLocaleTimeString()
+                            : "Just now"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Last Passcode Change:</span>
+                        <span className="text-slate-300">
+                          {store.securityMeta?.lastPasswordChange
+                            ? new Date(store.securityMeta.lastPasswordChange).toLocaleDateString()
+                            : "Default Seed"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      store.revokeAllSessions();
+                      toast.info("All active sessions revoked. Console locked.");
+                    }}
+                    className="w-full border-amber-800/50 bg-amber-950/20 hover:bg-amber-950/40 text-amber-300 font-semibold text-xs h-10 rounded-xl"
+                  >
+                    <LogOut className="w-3.5 h-3.5 mr-2" /> Revoke Sessions & Lock Now
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Security & Access Audit Log */}
+            <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300">
+                    <History className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-base text-white">
+                      Security & Access Audit Trail
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Real-time log of authentications, lockouts, and credential updates
+                    </p>
+                  </div>
+                </div>
+
+                <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-400 font-mono">
+                  {store.securityLogs.length} Events Logged
+                </Badge>
+              </div>
+
+              <div className="border border-slate-800 rounded-2xl overflow-hidden bg-slate-950/50">
+                <Table>
+                  <TableHeader className="bg-slate-900/80">
+                    <TableRow className="border-slate-800 hover:bg-transparent">
+                      <TableHead className="text-slate-400 text-xs font-bold">Timestamp</TableHead>
+                      <TableHead className="text-slate-400 text-xs font-bold">Event</TableHead>
+                      <TableHead className="text-slate-400 text-xs font-bold">Status</TableHead>
+                      <TableHead className="text-slate-400 text-xs font-bold">Details</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {store.securityLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-xs text-slate-500">
+                          No security events recorded yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      store.securityLogs.slice(0, 10).map((log) => (
+                        <TableRow key={log.id} className="border-slate-800/60 text-xs hover:bg-slate-900/40">
+                          <TableCell className="text-slate-400 font-mono whitespace-nowrap">
+                            {new Date(log.timestamp).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </TableCell>
+                          <TableCell className="font-semibold text-slate-200 capitalize">
+                            {log.action.replace(/_/g, " ")}
+                          </TableCell>
+                          <TableCell>
+                            {log.status === "success" ? (
+                              <Badge className="bg-emerald-950 text-emerald-400 border border-emerald-800/60 text-[10px] font-bold">
+                                Success
+                              </Badge>
+                            ) : log.status === "failed" ? (
+                              <Badge variant="destructive" className="text-[10px] font-bold">
+                                Failed
+                              </Badge>
+                            ) : log.status === "warning" ? (
+                              <Badge className="bg-amber-950 text-amber-400 border border-amber-800/60 text-[10px] font-bold">
+                                Warning
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] text-slate-400 border-slate-700">
+                                Info
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-slate-400 text-xs max-w-xs truncate">
+                            {log.detail}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* Card 4: Data Management & Reset */}
+            <div className="bg-slate-900 border border-rose-950/50 p-6 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2.5 text-rose-400">
+                <div className="w-9 h-9 rounded-xl bg-rose-950 border border-rose-800/40 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-display font-bold text-base text-white">
+                    Data Management & Storage Reset
+                  </h4>
+                  <p className="text-xs text-slate-400">
+                    Clear live orders, test bills, or restore factory defaults
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <Button
                   variant="outline"
                   onClick={() => {
-                    if (confirm("Are you sure you want to clear all orders?")) {
+                    if (confirm("Are you sure you want to clear all active orders?")) {
                       store.clearAllOrders();
                       toast.success("All orders cleared from system");
                     }
@@ -1632,7 +1985,7 @@ function AdminPage() {
                       toast.success("All store data reset and cleared successfully");
                     }
                   }}
-                  className="w-full text-xs text-slate-500 hover:text-rose-400 hover:bg-rose-950/20 h-9"
+                  className="w-full text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 border border-rose-900/40 h-10 rounded-xl"
                 >
                   Wipe & Reset Everything
                 </Button>

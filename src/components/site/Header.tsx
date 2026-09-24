@@ -89,21 +89,6 @@ export function Header() {
               </Link>
             );
           })}
-
-          {/* Admin Link */}
-          <Link
-            to="/admin"
-            title="Admin Portal"
-            className={cn(
-              "whitespace-nowrap rounded-full px-2.5 py-1 text-[0.7rem] font-medium tracking-wide transition-all duration-200 border flex items-center gap-1 opacity-70 hover:opacity-100",
-              isSolid
-                ? "border-border text-foreground hover:bg-black/5"
-                : "border-white/25 text-white hover:bg-white/15",
-            )}
-          >
-            <Lock className="h-3 w-3" />
-            <span className="hidden xl:inline">Admin</span>
-          </Link>
         </nav>
 
         {/* Right Side Utility Group */}
@@ -218,15 +203,6 @@ export function Header() {
               <a href={restaurant.phoneHref}>
                 <Phone className="h-4 w-4 mr-2 text-primary" /> Call {restaurant.phone}
               </a>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              variant="ghost"
-              className="rounded-full font-semibold text-xs text-muted-foreground hover:text-foreground mt-1"
-              onClick={() => setMenuOpen(false)}
-            >
-              <Link to="/admin">🔒 Staff & Admin Portal</Link>
             </Button>
           </div>
         </div>
