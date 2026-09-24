@@ -153,14 +153,17 @@ export function ItemDialog({
   return (
     <Dialog open={Boolean(item)} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] gap-0 overflow-y-auto rounded-3xl p-0 sm:max-w-lg">
-        <img
-          src={item.image}
-          alt={item.name}
-          loading="lazy"
-          width={900}
-          height={506}
-          className="h-44 w-full object-cover"
-        />
+        <div className="relative h-28 sm:h-32 w-full overflow-hidden bg-muted">
+          <img
+            src={item.image}
+            alt={item.name}
+            loading="lazy"
+            width={600}
+            height={300}
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+        </div>
         <div className="space-y-6 p-6">
           <DialogHeader className="space-y-1 text-left">
             <DialogTitle className="font-display text-2xl">{item.name}</DialogTitle>

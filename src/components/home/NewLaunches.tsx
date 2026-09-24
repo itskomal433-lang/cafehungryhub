@@ -22,16 +22,16 @@ export function NewLaunches() {
                 to="/menu"
                 className="hh-shadow group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border/80 bg-card transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:border-gold/60 block"
               >
-                <div className="aspect-square overflow-hidden bg-muted relative">
+                <div className="h-28 sm:h-32 w-full overflow-hidden bg-muted relative">
                   <img
                     src={item.image}
                     alt={item.name}
                     loading="lazy"
-                    width={900}
-                    height={900}
+                    width={400}
+                    height={260}
                     className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
                   />
-                  <span className="absolute top-3 left-3 rounded-full bg-gold px-2.5 py-1 text-[0.62rem] font-extrabold tracking-[0.14em] text-gold-foreground uppercase shadow-md animate-bounce-subtle border border-amber-300/40">
+                  <span className="absolute top-2 left-2 rounded-full bg-gold px-2 py-0.5 text-[0.58rem] font-extrabold tracking-[0.12em] text-gold-foreground uppercase shadow-md border border-amber-300/40">
                     ✨ Chef's Special
                   </span>
                 </div>

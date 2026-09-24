@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
+import { LayoutGrid, List, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FoodCard } from "@/components/site/FoodCard";
@@ -31,6 +31,7 @@ export function MenuBrowser({
   const [vegOnly, setVegOnly] = useState(false);
   const [bestOnly, setBestOnly] = useState(false);
   const [sort, setSort] = useState<SortMode>("featured");
+  const [viewMode, setViewMode] = useState<"grid" | "compact">("grid");
   const [active, setActive] = useState<MenuItem | null>(null);
 
   const categoryCounts = useMemo(() => {
@@ -180,10 +181,42 @@ export function MenuBrowser({
               <option value="high">Price: high to low</option>
             </select>
           </label>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center rounded-full border border-border/80 bg-card p-1 shadow-[0_2px_0_var(--border)]">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "rounded-full p-1.5 transition-colors cursor-pointer",
+                viewMode === "grid"
+                  ? "bg-amber-500 text-stone-950 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Grid view (small images)"
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("compact")}
+              className={cn(
+                "rounded-full p-1.5 transition-colors cursor-pointer",
+                viewMode === "compact"
+                  ? "bg-amber-500 text-stone-950 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+              title="Compact list view (small thumbnails)"
+              aria-label="Compact list view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Grid or Zero State */}
+      {/* Grid / List or Zero State */}
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border bg-card/60 px-6 py-16 text-center">
           <p className="font-display text-xl font-bold">No dishes found</p>
@@ -200,9 +233,21 @@ export function MenuBrowser({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          className={cn(
+            "grid gap-4 sm:gap-5",
+            viewMode === "grid"
+              ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+              : "grid-cols-1 lg:grid-cols-2",
+          )}
+        >
           {items.map((item) => (
-            <FoodCard key={item.id} item={item} onSelect={handleSelect} />
+            <FoodCard
+              key={item.id}
+              item={item}
+              onSelect={handleSelect}
+              layout={viewMode}
+            />
           ))}
         </div>
       )}
